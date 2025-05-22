@@ -1,0 +1,12 @@
+---
+- name: Configure KVM host
+  hosts: kvm_hosts
+  become: true
+  roles:
+    - kvm_host
+
+- name: Create Rocky 9 VMs
+  hosts: kvm_hosts
+  become: true
+  roles:
+    - rocky9_vm 

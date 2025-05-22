@@ -1,0 +1,37 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virtinst
+      - python3-libvirt
+    state: present
+    update_cache: yes
+
+- name: Enable and start libvirtd service
+  service:
+    name: libvirtd
+    state: started
+    enabled: yes
+
+- name: Ensure libvirt storage pool directory exists
+  file:
+    path: "{{ libvirt_pool_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Define libvirt storage pool
+  community.libvirt.virt_pool:
+    name: "{{ libvirt_pool_name }}"
+    state: present
+    type: dir
+    target: "{{ libvirt_pool_dir }}"
+
+- name: Start libvirt storage pool
+  community.libvirt.virt_pool:
+    name: "{{ libvirt_pool_name }}"
+    state: active
+    autostart: yes 

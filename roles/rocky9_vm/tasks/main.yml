@@ -1,0 +1,64 @@
+---
+- name: Download Rocky 9 cloud image
+  get_url:
+    url: "{{ rocky9_vm_template.image_url }}"
+    dest: "{{ libvirt_pool_dir }}/{{ rocky9_vm_template.name }}.qcow2"
+    mode: '0644'
+
+- name: Create VMs from template
+  block:
+    - name: Create VM disk from base image
+      copy:
+        src: "{{ libvirt_pool_dir }}/{{ rocky9_vm_template.name }}.qcow2"
+        dest: "{{ libvirt_pool_dir }}/{{ item.name }}.qcow2"
+        remote_src: yes
+        force: no
+      with_items: "{{ rocky9_vms }}"
+
+    - name: Resize VM disk
+      command: >
+        qemu-img resize {{ libvirt_pool_dir }}/{{ item.name }}.qcow2 {{ item.disk_size_gb }}G
+      with_items: "{{ rocky9_vms }}"
+
+    - name: Define VM
+      community.libvirt.virt:
+        name: "{{ item.name }}"
+        command: define
+        xml: |
+          <domain type='kvm'>
+            <name>{{ item.name }}</name>
+            <memory unit='MiB'>{{ item.memory_mb }}</memory>
+            <vcpu>{{ item.vcpus }}</vcpu>
+            <os>
+              <type arch='x86_64'>hvm</type>
+              <boot dev='hd'/>
+            </os>
+            <features>
+              <acpi/>
+              <apic/>
+            </features>
+            <devices>
+              <disk type='file' device='disk'>
+                <driver name='qemu' type='qcow2'/>
+                <source file='{{ libvirt_pool_dir }}/{{ item.name }}.qcow2'/>
+                <target dev='vda' bus='virtio'/>
+              </disk>
+              <interface type='network'>
+                <source network='{{ rocky9_vm_template.network }}'/>
+                <model type='virtio'/>
+              </interface>
+              <console type='pty'>
+                <target type='serial' port='0'/>
+              </console>
+              <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+                <listen type='address' address='0.0.0.0'/>
+              </graphics>
+            </devices>
+          </domain>
+      with_items: "{{ rocky9_vms }}"
+
+    - name: Start VM
+      community.libvirt.virt:
+        name: "{{ item.name }}"
+        state: running
+      with_items: "{{ rocky9_vms }}" 

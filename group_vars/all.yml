@@ -1,0 +1,28 @@
+# KVM/libvirt settings
+libvirt_pool_dir: "/var/lib/libvirt/images"
+libvirt_pool_name: "default"
+
+# Rocky 9 VM settings
+rocky9_vm_template:
+  name: "rocky9-template"
+  vcpus: 2
+  memory_mb: 4096
+  disk_size_gb: 20
+  os_variant: "rocky9.0"
+  network: "default"  # Using default libvirt network for local networking
+  image_url: "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+
+# VM instances to create
+rocky9_vms:
+  - name: "controller"
+    vcpus: 2
+    memory_mb: 4096
+    disk_size_gb: 20
+  - name: "worker1"
+    vcpus: 2
+    memory_mb: 4096
+    disk_size_gb: 20
+  - name: "worker2"
+    vcpus: 2
+    memory_mb: 4096
+    disk_size_gb: 20 

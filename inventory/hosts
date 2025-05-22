@@ -1,0 +1,5 @@
+[kvm_hosts]
+localhost ansible_connection=local
+
+[rocky9_vms]
+# VM hosts will be added here dynamically 
