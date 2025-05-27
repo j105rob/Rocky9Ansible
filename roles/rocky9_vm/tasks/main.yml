@@ -5,6 +5,9 @@
     dest: "{{ libvirt_pool_dir }}/{{ rocky9_vm_template.name }}.qcow2"
     mode: '0644'
 
+- name: Include cloud-init tasks
+  include_tasks: cloud_init.yml
+
 - name: Create VMs from template
   block:
     - name: Create VM disk from base image
@@ -43,6 +46,12 @@
                 <source file='{{ libvirt_pool_dir }}/{{ item.name }}.qcow2'/>
                 <target dev='vda' bus='virtio'/>
               </disk>
+              <disk type='file' device='cdrom'>
+                <driver name='qemu' type='raw'/>
+                <source file='{{ libvirt_pool_dir }}/{{ item.name }}-cloud-init.iso'/>
+                <target dev='hda' bus='ide'/>
+                <readonly/>
+              </disk>
               <interface type='network'>
                 <source network='{{ rocky9_vm_template.network }}'/>
                 <model type='virtio'/>
@@ -53,6 +62,9 @@
               <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
                 <listen type='address' address='0.0.0.0'/>
               </graphics>
+              <channel type='unix'>
+                <target type='virtio' name='org.qemu.guest_agent.0'/>
+              </channel>
             </devices>
           </domain>
       with_items: "{{ rocky9_vms }}"

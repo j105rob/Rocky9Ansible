@@ -1,0 +1,22 @@
+---
+- name: Create cloud-init user-data file
+  template:
+    src: user-data.j2
+    dest: "{{ libvirt_pool_dir }}/{{ item.name }}-user-data"
+  with_items: "{{ rocky9_vms }}"
+
+- name: Create cloud-init meta-data file
+  copy:
+    content: |
+      instance-id: {{ item.name }}
+      local-hostname: {{ item.name }}
+    dest: "{{ libvirt_pool_dir }}/{{ item.name }}-meta-data"
+  with_items: "{{ rocky9_vms }}"
+
+- name: Generate cloud-init ISO
+  command: >
+    genisoimage -output {{ libvirt_pool_dir }}/{{ item.name }}-cloud-init.iso
+    -volid cidata -joliet -rock 
+    {{ libvirt_pool_dir }}/{{ item.name }}-user-data
+    {{ libvirt_pool_dir }}/{{ item.name }}-meta-data
+  with_items: "{{ rocky9_vms }}" 

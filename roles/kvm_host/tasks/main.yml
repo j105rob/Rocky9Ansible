@@ -17,11 +17,14 @@
     state: started
     enabled: yes
 
-- name: Ensure libvirt storage pool directory exists
+- name: Ensure libvirt storage pool directory exists with correct permissions
   file:
     path: "{{ libvirt_pool_dir }}"
     state: directory
     mode: '0755'
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    recurse: yes
 
 - name: Define libvirt storage pool
   community.libvirt.virt_pool:

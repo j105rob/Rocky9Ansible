@@ -1,6 +1,12 @@
 # KVM/libvirt settings
-libvirt_pool_dir: "/var/lib/libvirt/images"
+libvirt_pool_dir: "/media/ubuntu/store/VMs"
 libvirt_pool_name: "default"
+
+# Default user settings
+default_user:
+  username: "rocky"
+  password: "rocky123"  # This will be hashed during VM creation
+  ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub', errors='ignore') | default('') }}"
 
 # Rocky 9 VM settings
 rocky9_vm_template:

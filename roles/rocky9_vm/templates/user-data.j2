@@ -1,0 +1,30 @@
+#cloud-config
+users:
+  - name: {{ default_user.username }}
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+    lock_passwd: false
+{% if default_user.ssh_key != '' %}
+    ssh_authorized_keys:
+      - {{ default_user.ssh_key }}
+{% endif %}
+{% if default_user.password != '' %}
+    passwd: {{ default_user.password | password_hash('sha512') }}
+{% endif %}
+
+# Update package list on first boot
+package_update: true
+package_upgrade: true
+
+# Install additional packages
+packages:
+  - qemu-guest-agent
+  - python3
+
+# Enable qemu-guest-agent
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+
+# Configure hostname
+hostname: {{ item.name }} 
