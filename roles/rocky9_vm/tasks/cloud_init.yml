@@ -1,22 +1,40 @@
 ---
-- name: Create cloud-init user-data file
+- name: Create cloud-init directory for VM
+  file:
+    path: "{{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}"
+    state: directory
+    mode: '0755'
+    owner: libvirt-qemu
+    group: libvirt-qemu
+
+- name: Generate user-data for VM
   template:
     src: user-data.j2
-    dest: "{{ libvirt_pool_dir }}/{{ item.name }}-user-data"
-  with_items: "{{ rocky9_vms }}"
+    dest: "{{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/user-data"
+    mode: '0644'
+    owner: libvirt-qemu
+    group: libvirt-qemu
 
-- name: Create cloud-init meta-data file
-  copy:
-    content: |
-      instance-id: {{ item.name }}
-      local-hostname: {{ item.name }}
-    dest: "{{ libvirt_pool_dir }}/{{ item.name }}-meta-data"
-  with_items: "{{ rocky9_vms }}"
+- name: Generate meta-data for VM
+  template:
+    src: meta-data.j2
+    dest: "{{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/meta-data"
+    mode: '0644'
+    owner: libvirt-qemu
+    group: libvirt-qemu
 
-- name: Generate cloud-init ISO
+- name: Create cloud-init ISO for VM
   command: >
-    genisoimage -output {{ libvirt_pool_dir }}/{{ item.name }}-cloud-init.iso
-    -volid cidata -joliet -rock 
-    {{ libvirt_pool_dir }}/{{ item.name }}-user-data
-    {{ libvirt_pool_dir }}/{{ item.name }}-meta-data
-  with_items: "{{ rocky9_vms }}" 
+    genisoimage -output {{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/{{ vm_name }}-cloud-init.iso
+    -volid cidata -joliet -rock
+    {{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/user-data
+    {{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/meta-data
+  args:
+    creates: "{{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/{{ vm_name }}-cloud-init.iso"
+
+- name: Set ownership of cloud-init ISO
+  file:
+    path: "{{ libvirt_pool_dir }}/cloud-init/{{ vm_name }}/{{ vm_name }}-cloud-init.iso"
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: '0644' 

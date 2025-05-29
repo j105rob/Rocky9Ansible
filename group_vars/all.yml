@@ -5,7 +5,7 @@ libvirt_pool_name: "default"
 # Default user settings
 default_user:
   username: "rocky"
-  password: "rocky123"  # This will be hashed during VM creation
+  password: "rocky123"  # This will be hashed during installation
   ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub', errors='ignore') | default('') }}"
 
 # Rocky 9 VM settings
@@ -16,7 +16,7 @@ rocky9_vm_template:
   disk_size_gb: 20
   os_variant: "rocky9.0"
   network: "default"  # Using default libvirt network for local networking
-  image_url: "https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+  base_image_path: "/media/ubuntu/store/VMs/rocky9-cloud-base.qcow2"
 
 # VM instances to create
 rocky9_vms:

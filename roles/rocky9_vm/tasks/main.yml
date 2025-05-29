@@ -1,76 +1,121 @@
 ---
-- name: Download Rocky 9 cloud image
-  get_url:
-    url: "{{ rocky9_vm_template.image_url }}"
-    dest: "{{ libvirt_pool_dir }}/{{ rocky9_vm_template.name }}.qcow2"
+- name: Check if base cloud image exists
+  stat:
+    path: "{{ rocky9_vm_template.base_image_path }}"
+  register: base_image_stat
+
+- name: Fail if base image doesn't exist
+  fail:
+    msg: "Base cloud image not found at {{ rocky9_vm_template.base_image_path }}. Please run build_rocky9_image.sh first."
+  when: not base_image_stat.stat.exists
+
+- name: Create VM disk from base image
+  command: >
+    qemu-img create -f qcow2 -F qcow2 -b {{ rocky9_vm_template.base_image_path }}
+    {{ libvirt_pool_dir }}/{{ item.name }}.qcow2 {{ item.disk_size_gb }}G
+  args:
+    creates: "{{ libvirt_pool_dir }}/{{ item.name }}.qcow2"
+  with_items: "{{ rocky9_vms }}"
+
+- name: Fix VM disk permissions
+  file:
+    path: "{{ libvirt_pool_dir }}/{{ item.name }}.qcow2"
+    owner: libvirt-qemu
+    group: libvirt-qemu
     mode: '0644'
+  with_items: "{{ rocky9_vms }}"
 
-- name: Include cloud-init tasks
+- name: Create NVRAM directory
+  file:
+    path: "/var/lib/libvirt/qemu/nvram"
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Copy UEFI variables template
+  copy:
+    src: "/usr/share/OVMF/OVMF_VARS_4M.fd"
+    dest: "/var/lib/libvirt/qemu/nvram/{{ item.name }}_VARS.fd"
+    remote_src: yes
+    mode: '0644'
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    force: no
+  with_items: "{{ rocky9_vms }}"
+  become: true
+
+- name: Setup cloud-init for each VM
   include_tasks: cloud_init.yml
+  vars:
+    vm_name: "{{ item.name }}"
+  with_items: "{{ rocky9_vms }}"
 
-- name: Create VMs from template
-  block:
-    - name: Create VM disk from base image
-      copy:
-        src: "{{ libvirt_pool_dir }}/{{ rocky9_vm_template.name }}.qcow2"
-        dest: "{{ libvirt_pool_dir }}/{{ item.name }}.qcow2"
-        remote_src: yes
-        force: no
-      with_items: "{{ rocky9_vms }}"
+- name: Define VMs
+  community.libvirt.virt:
+    name: "{{ item.name }}"
+    command: define
+    xml: |
+      <domain type='kvm'>
+        <name>{{ item.name }}</name>
+        <memory unit='MiB'>{{ item.memory_mb }}</memory>
+        <vcpu>{{ item.vcpus }}</vcpu>
+        <os>
+          <type arch='x86_64' machine='q35'>hvm</type>
+          <loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.secboot.fd</loader>
+          <nvram>/var/lib/libvirt/qemu/nvram/{{ item.name }}_VARS.fd</nvram>
+          <boot dev='hd'/>
+          <bootmenu enable='yes' timeout='3000'/>
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+          <smm state='on'/>
+        </features>
+        <cpu mode='host-model'/>
+        <clock offset='utc'>
+          <timer name='rtc' tickpolicy='catchup'/>
+          <timer name='pit' tickpolicy='delay'/>
+          <timer name='hpet' present='no'/>
+        </clock>
+        <devices>
+          <disk type='file' device='disk'>
+            <driver name='qemu' type='qcow2'/>
+            <source file='{{ libvirt_pool_dir }}/{{ item.name }}.qcow2'/>
+            <target dev='vda' bus='virtio'/>
+          </disk>
+          <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw'/>
+            <source file='{{ libvirt_pool_dir }}/cloud-init/{{ item.name }}/{{ item.name }}-cloud-init.iso'/>
+            <target dev='sda' bus='sata'/>
+            <readonly/>
+          </disk>
+          <interface type='network'>
+            <source network='{{ rocky9_vm_template.network }}'/>
+            <model type='virtio'/>
+          </interface>
+          <serial type='pty'>
+            <target type='isa-serial' port='0'>
+              <model name='isa-serial'/>
+            </target>
+          </serial>
+          <console type='pty'>
+            <target type='serial' port='0'/>
+          </console>
+          <channel type='unix'>
+            <target type='virtio' name='org.qemu.guest_agent.0'/>
+          </channel>
+          <video>
+            <model type='virtio'/>
+          </video>
+          <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
+            <listen type='address' address='0.0.0.0'/>
+          </graphics>
+        </devices>
+      </domain>
+  with_items: "{{ rocky9_vms }}"
 
-    - name: Resize VM disk
-      command: >
-        qemu-img resize {{ libvirt_pool_dir }}/{{ item.name }}.qcow2 {{ item.disk_size_gb }}G
-      with_items: "{{ rocky9_vms }}"
-
-    - name: Define VM
-      community.libvirt.virt:
-        name: "{{ item.name }}"
-        command: define
-        xml: |
-          <domain type='kvm'>
-            <name>{{ item.name }}</name>
-            <memory unit='MiB'>{{ item.memory_mb }}</memory>
-            <vcpu>{{ item.vcpus }}</vcpu>
-            <os>
-              <type arch='x86_64'>hvm</type>
-              <boot dev='hd'/>
-            </os>
-            <features>
-              <acpi/>
-              <apic/>
-            </features>
-            <devices>
-              <disk type='file' device='disk'>
-                <driver name='qemu' type='qcow2'/>
-                <source file='{{ libvirt_pool_dir }}/{{ item.name }}.qcow2'/>
-                <target dev='vda' bus='virtio'/>
-              </disk>
-              <disk type='file' device='cdrom'>
-                <driver name='qemu' type='raw'/>
-                <source file='{{ libvirt_pool_dir }}/{{ item.name }}-cloud-init.iso'/>
-                <target dev='hda' bus='ide'/>
-                <readonly/>
-              </disk>
-              <interface type='network'>
-                <source network='{{ rocky9_vm_template.network }}'/>
-                <model type='virtio'/>
-              </interface>
-              <console type='pty'>
-                <target type='serial' port='0'/>
-              </console>
-              <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'>
-                <listen type='address' address='0.0.0.0'/>
-              </graphics>
-              <channel type='unix'>
-                <target type='virtio' name='org.qemu.guest_agent.0'/>
-              </channel>
-            </devices>
-          </domain>
-      with_items: "{{ rocky9_vms }}"
-
-    - name: Start VM
-      community.libvirt.virt:
-        name: "{{ item.name }}"
-        state: running
-      with_items: "{{ rocky9_vms }}" 
+- name: Start VMs
+  community.libvirt.virt:
+    name: "{{ item.name }}"
+    state: running
+  with_items: "{{ rocky9_vms }}" 

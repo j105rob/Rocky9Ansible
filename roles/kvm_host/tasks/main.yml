@@ -8,6 +8,13 @@
       - bridge-utils
       - virtinst
       - python3-libvirt
+      - genisoimage
+      - xorriso
+      - isolinux
+      - syslinux-common
+      - ovmf
+      - python3-pip
+      - nginx
     state: present
     update_cache: yes
 
@@ -26,15 +33,64 @@
     group: libvirt-qemu
     recurse: yes
 
+- name: Create HTTP root directory
+  file:
+    path: /var/www/html/kickstart
+    state: directory
+    mode: '0755'
+    owner: www-data
+    group: www-data
+
+- name: Enable and start nginx service
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Allow HTTP through firewall
+  ufw:
+    rule: allow
+    port: 80
+    proto: tcp
+
 - name: Define libvirt storage pool
   community.libvirt.virt_pool:
     name: "{{ libvirt_pool_name }}"
     state: present
-    type: dir
-    target: "{{ libvirt_pool_dir }}"
+    xml: |
+      <pool type='dir'>
+        <name>{{ libvirt_pool_name }}</name>
+        <target>
+          <path>{{ libvirt_pool_dir }}</path>
+        </target>
+      </pool>
 
 - name: Start libvirt storage pool
   community.libvirt.virt_pool:
     name: "{{ libvirt_pool_name }}"
+    state: active
+    autostart: yes
+
+- name: Define default network if not exists
+  community.libvirt.virt_net:
+    command: define
+    name: default
+    xml: |
+      <network>
+        <name>default</name>
+        <forward mode='nat'/>
+        <bridge name='virbr0' stp='on' delay='0'/>
+        <ip address='192.168.122.1' netmask='255.255.255.0'>
+          <dhcp>
+            <range start='192.168.122.2' end='192.168.122.254'/>
+          </dhcp>
+        </ip>
+      </network>
+    state: present
+  ignore_errors: yes
+
+- name: Start default network
+  community.libvirt.virt_net:
+    name: default
     state: active
     autostart: yes 
