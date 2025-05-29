@@ -1,0 +1,106 @@
+---
+# Example Ansible Playbook for Rocky Linux 9 Lab Environment
+# This playbook demonstrates basic Ansible functionality across all VMs
+
+- name: Basic System Setup and Information Gathering
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Update system packages
+      dnf:
+        name: "*"
+        state: latest
+      tags: update
+    
+    - name: Install useful packages
+      dnf:
+        name:
+          - htop
+          - tree
+          - wget
+          - curl
+          - vim
+          - git
+          - net-tools
+        state: present
+      tags: packages
+    
+    - name: Create a test user
+      user:
+        name: testuser
+        comment: "Test user created by Ansible"
+        shell: /bin/bash
+        create_home: yes
+      tags: users
+    
+    - name: Display system information
+      debug:
+        msg: |
+          Hostname: {{ ansible_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+          Memory: {{ ansible_memtotal_mb }}MB
+          CPU Cores: {{ ansible_processor_vcpus }}
+          IP Address: {{ ansible_default_ipv4.address }}
+      tags: info
+
+- name: Controller-specific tasks
+  hosts: controllers
+  become: yes
+  
+  tasks:
+    - name: Install Ansible on controller
+      dnf:
+        name: ansible
+        state: present
+      tags: controller
+    
+    - name: Create Ansible working directory
+      file:
+        path: /opt/ansible
+        state: directory
+        owner: rocky
+        group: rocky
+        mode: '0755'
+      tags: controller
+
+- name: Worker-specific tasks
+  hosts: workers
+  become: yes
+  
+  tasks:
+    - name: Install Docker on workers
+      dnf:
+        name: docker
+        state: present
+      tags: workers
+    
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags: workers
+    
+    - name: Add rocky user to docker group
+      user:
+        name: rocky
+        groups: docker
+        append: yes
+      tags: workers
+
+- name: Final verification
+  hosts: all
+  gather_facts: no
+  
+  tasks:
+    - name: Test connectivity between all hosts
+      ping:
+      tags: verify
+    
+    - name: Show final status
+      debug:
+        msg: "✅ {{ inventory_hostname }} is ready for Ansible automation!"
+      tags: verify 

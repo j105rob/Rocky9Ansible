@@ -45,6 +45,7 @@ ansible-galaxy collection install community.libvirt
 
 ### Option 1: Using the Setup Wrapper (Recommended)
 
+**Local KVM Deployment:**
 ```bash
 # Build base image and create VMs in one command
 ./setup.sh build && ./setup.sh create
@@ -55,8 +56,24 @@ ansible-galaxy collection install community.libvirt
 ./setup.sh test      # Verify everything works
 ```
 
+**AWS Deployment:**
+```bash
+# Prerequisites: Configure AWS CLI
+aws configure
+
+# Deploy to AWS (single command)
+./setup.sh aws-create
+
+# Test the environment
+./setup.sh test
+
+# Cleanup when done (important to avoid charges!)
+./setup.sh aws-cleanup
+```
+
 ### Option 2: Using Tools Directly
 
+**Local KVM:**
 1. **Build the base cloud image:**
    ```bash
    sudo tools/build_rocky9_image.sh
@@ -65,6 +82,17 @@ ansible-galaxy collection install community.libvirt
 2. **Create VMs with full automation:**
    ```bash
    sudo tools/create_vms_cloudinit.sh
+   ```
+
+**AWS Deployment:**
+1. **Configure AWS CLI:**
+   ```bash
+   aws configure
+   ```
+
+2. **Create EC2 instances:**
+   ```bash
+   tools/create_vms_aws.sh
    ```
 
 3. **Test Ansible connectivity:**
@@ -83,16 +111,109 @@ ansible-galaxy collection install community.libvirt
 - Generate Ansible inventory file
 - Test connectivity to ensure everything works
 
+## AWS Deployment
+
+### Prerequisites for AWS
+
+1. **AWS CLI Installation:**
+   ```bash
+   curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+   unzip awscliv2.zip
+   sudo ./aws/install
+   ```
+
+2. **AWS Configuration:**
+   ```bash
+   aws configure
+   # Enter your AWS Access Key ID
+   # Enter your AWS Secret Access Key
+   # Enter your default region (e.g., us-east-1)
+   # Enter output format (json)
+   ```
+
+3. **Required Permissions:**
+   Your AWS user needs the following permissions:
+   - EC2 full access (or specific permissions for instances, VPCs, security groups)
+   - Ability to create and manage key pairs
+   - Ability to create and manage VPCs and networking components
+
+### AWS Configuration Options
+
+You can customize AWS deployment using environment variables:
+
+```bash
+# Set AWS region (default: us-east-1)
+export AWS_REGION=us-west-2
+
+# Set instance type (default: t3.medium)
+export INSTANCE_TYPE=t3.large
+
+# Set key pair name (default: ansible-lab-key)
+export KEY_NAME=my-ansible-key
+
+# Then deploy
+./setup.sh aws-create
+```
+
+### AWS Cost Considerations
+
+- **Instance Type**: Default `t3.medium` costs ~$0.0416/hour per instance
+- **Total Cost**: ~$0.125/hour for all 3 instances
+- **Daily Cost**: ~$3.00/day if left running
+- **Monthly Cost**: ~$90/month if left running
+
+**💰 Important**: Always run `./setup.sh aws-cleanup` when done to avoid charges!
+
+### AWS vs Local KVM Comparison
+
+| Feature | Local KVM | AWS |
+|---------|-----------|-----|
+| **Cost** | Free (uses local resources) | ~$0.125/hour |
+| **Setup Time** | ~2 minutes | ~3-4 minutes |
+| **Internet Access** | Limited to local network | Full internet access |
+| **Scalability** | Limited by local hardware | Unlimited |
+| **Persistence** | Persistent until manually removed | Persistent until terminated |
+| **Accessibility** | Local network only | Accessible from anywhere |
+
+## Testing Your Environment
+
+Once your lab is deployed (either KVM or AWS), you can test it with the included example playbook:
+
+```bash
+# Run the basic setup playbook
+ansible-playbook -i inventory.ini examples/basic-setup.yml
+
+# Run specific parts with tags
+ansible-playbook -i inventory.ini examples/basic-setup.yml --tags info
+ansible-playbook -i inventory.ini examples/basic-setup.yml --tags packages
+ansible-playbook -i inventory.ini examples/basic-setup.yml --tags verify
+```
+
+This playbook will:
+- Update system packages
+- Install useful tools (htop, tree, vim, git, etc.)
+- Create a test user
+- Display system information
+- Install Ansible on the controller
+- Install Docker on workers
+- Verify connectivity between all hosts
+
 ## Project Structure
 
 ```
 Rocky9Ansible/
 ├── setup.sh                       # Main setup wrapper script
 ├── tools/
-│   ├── build_rocky9_image.sh       # Build cloud-init base image
-│   ├── create_vms_cloudinit.sh     # Standalone VM creation script
+│   ├── build_rocky9_image.sh       # Build cloud-init base image (KVM)
+│   ├── create_vms_cloudinit.sh     # Create VMs locally with KVM
+│   ├── create_vms_aws.sh           # Create EC2 instances in AWS
+│   ├── cleanup_aws.sh              # Comprehensive AWS resource cleanup
 │   ├── create_vms.sh               # Legacy ISO-based script
 │   └── test_lab.sh                 # Lab environment verification
+├── config/
+│   └── lab.conf.example            # Configuration template
+├── examples/
+│   └── basic-setup.yml             # Example Ansible playbook
 ├── inventory.ini                   # Auto-generated Ansible inventory
 ├── rocky9.ks                       # Kickstart for legacy method
 ├── site.yml                        # Main Ansible playbook
@@ -233,11 +354,14 @@ This project is licensed under the MIT License.
 
 ## Features
 
+- **Multi-Platform Deployment**: Choose between local KVM or AWS EC2 deployment
 - **Modern Cloud-Init Approach**: Fast VM deployment using official Rocky Linux cloud images
+- **AWS Integration**: Full AWS EC2 support with automatic VPC and security group creation
 - **Automated SSH Key Management**: Automatically generates SSH keys for passwordless authentication
 - **Passwordless Access**: Both SSH and sudo configured for seamless automation
 - **Ansible Ready**: Auto-generated inventory file with proper configuration
-- **Quick Deployment**: ~30 seconds total deployment time for all 3 VMs
+- **Quick Deployment**: ~30 seconds for KVM, ~3-4 minutes for AWS
 - **Connectivity Testing**: Automatic verification that SSH and sudo work correctly
-- **Easy Cleanup**: Simple `--clean` flag to remove and recreate VMs
+- **Easy Cleanup**: Simple cleanup commands to remove resources and avoid AWS charges
+- **Cost Awareness**: Clear cost information and automatic cleanup for AWS
 - **Production-Like Environment**: Uses standard cloud deployment practices

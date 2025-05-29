@@ -1,0 +1,26 @@
+# Rocky Linux 9 Ansible Lab Configuration
+# Copy this file to config/lab.conf and customize as needed
+
+# Deployment Type: 'kvm' or 'aws'
+DEPLOYMENT_TYPE=kvm
+
+# KVM Configuration
+KVM_STORAGE_PATH=/media/ubuntu/store/VMs
+KVM_MEMORY_SIZE=4096
+KVM_VCPUS=2
+KVM_DISK_SIZE=20
+
+# AWS Configuration
+AWS_REGION=us-east-1
+INSTANCE_TYPE=t3.medium
+KEY_NAME=ansible-lab-key
+
+# Common Configuration
+DEFAULT_USER=rocky
+DEFAULT_PASSWORD=rocky123
+SSH_KEY_PATH=/home/ubuntu/.ssh/id_rsa.pub
+
+# VM Names (modify if you want different names)
+VM_CONTROLLER=controller
+VM_WORKER1=worker1
+VM_WORKER2=worker2 
