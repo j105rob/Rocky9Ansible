@@ -271,7 +271,7 @@ ensure_ssh_key() {
 # Function to generate Ansible inventory
 generate_inventory() {
     echo "Generating Ansible inventory file..."
-    local inventory_file="inventory.ini"
+    local inventory_file="../inventory.ini"
     
     # Wait a moment for VMs to get IP addresses
     sleep 10

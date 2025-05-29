@@ -43,21 +43,29 @@ ansible-galaxy collection install community.libvirt
 
 ## Quick Start
 
+### Option 1: Using the Setup Wrapper (Recommended)
+
+```bash
+# Build base image and create VMs in one command
+./setup.sh build && ./setup.sh create
+
+# Or step by step:
+./setup.sh build     # Build the base cloud image
+./setup.sh create    # Create VMs with full automation
+./setup.sh test      # Verify everything works
+```
+
+### Option 2: Using Tools Directly
+
 1. **Build the base cloud image:**
    ```bash
-   sudo ./build_rocky9_image.sh
+   sudo tools/build_rocky9_image.sh
    ```
 
 2. **Create VMs with full automation:**
    ```bash
-   sudo ./create_vms_cloudinit.sh
+   sudo tools/create_vms_cloudinit.sh
    ```
-
-This will automatically:
-- Generate SSH key pair if not present
-- Create 3 VMs with passwordless SSH and sudo
-- Generate Ansible inventory file
-- Test connectivity to ensure everything works
 
 3. **Test Ansible connectivity:**
    ```bash
@@ -66,16 +74,26 @@ This will automatically:
 
 4. **Verify everything works:**
    ```bash
-   ./test_lab.sh
+   tools/test_lab.sh
    ```
+
+### What This Does Automatically:
+- Generate SSH key pair if not present
+- Create 3 VMs with passwordless SSH and sudo
+- Generate Ansible inventory file
+- Test connectivity to ensure everything works
 
 ## Project Structure
 
 ```
 Rocky9Ansible/
-├── build_rocky9_image.sh          # Build cloud-init base image
-├── create_vms_cloudinit.sh         # Standalone VM creation script
-├── create_vms.sh                   # Legacy ISO-based script
+├── setup.sh                       # Main setup wrapper script
+├── tools/
+│   ├── build_rocky9_image.sh       # Build cloud-init base image
+│   ├── create_vms_cloudinit.sh     # Standalone VM creation script
+│   ├── create_vms.sh               # Legacy ISO-based script
+│   └── test_lab.sh                 # Lab environment verification
+├── inventory.ini                   # Auto-generated Ansible inventory
 ├── rocky9.ks                       # Kickstart for legacy method
 ├── site.yml                        # Main Ansible playbook
 ├── group_vars/
@@ -188,8 +206,8 @@ qemu-img info /media/ubuntu/store/VMs/controller.qcow2
 
 ### Custom Base Image
 To rebuild the base image with different packages:
-1. Edit the kickstart section in `build_rocky9_image.sh`
-2. Run: `sudo ./build_rocky9_image.sh --force`
+1. Edit the kickstart section in `tools/build_rocky9_image.sh`
+2. Run: `sudo tools/build_rocky9_image.sh --force`
 
 ### Network Customization
 To use a custom network instead of default:
