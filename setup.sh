@@ -22,8 +22,14 @@ show_help() {
     echo "  aws-destroy   Terminate all AWS instances (cleanup)"
     echo "  aws-cleanup   Comprehensive AWS cleanup (removes ALL resources)"
     echo
+    echo "Azure Commands:"
+    echo "  azure-create  Create VMs in Azure"
+    echo "  azure-clean   Delete existing Azure VMs and recreate"
+    echo "  azure-destroy Delete all Azure VMs (cleanup)"
+    echo "  azure-cleanup Comprehensive Azure cleanup (removes ALL resources)"
+    echo
     echo "General Commands:"
-    echo "  test          Test the lab environment (works with both KVM and AWS)"
+    echo "  test          Test the lab environment (works with KVM, AWS, and Azure)"
     echo "  help          Show this help message"
     echo
     echo "Examples:"
@@ -33,16 +39,20 @@ show_help() {
     echo "  # AWS deployment:"
     echo "  $0 aws-create"
     echo
-    echo "  # Test environment (works with both):"
+    echo "  # Azure deployment:"
+    echo "  $0 azure-create"
+    echo
+    echo "  # Test environment (works with all platforms):"
     echo "  $0 test"
     echo
-    echo "  # Cleanup AWS resources:"
-    echo "  $0 aws-destroy"
+    echo "  # Cleanup cloud resources:"
+    echo "  $0 aws-cleanup    # or azure-cleanup"
     echo
-    echo "Environment Variables for AWS:"
+    echo "Environment Variables (or set in config/lab.conf):"
     echo "  AWS_REGION        AWS region (default: us-east-1)"
-    echo "  INSTANCE_TYPE     EC2 instance type (default: t3.medium)"
-    echo "  KEY_NAME          AWS key pair name (default: ansible-lab-key)"
+    echo "  AWS_INSTANCE_TYPE EC2 instance type (default: t3.medium)"
+    echo "  AZURE_LOCATION    Azure region (default: eastus)"
+    echo "  AZURE_VM_SIZE     Azure VM size (default: Standard_B2s)"
 }
 
 case "${1:-help}" in
@@ -74,6 +84,23 @@ case "${1:-help}" in
     aws-cleanup)
         echo "🧹 Comprehensive AWS cleanup (removes ALL resources)..."
         tools/cleanup_aws.sh
+        ;;
+    azure-create)
+        echo "☁️ Creating VMs in Azure..."
+        tools/create_vms_azure.sh "${@:2}"
+        ;;
+    azure-clean)
+        echo "☁️ Cleaning and recreating Azure VMs..."
+        tools/create_vms_azure.sh --clean "${@:2}"
+        ;;
+    azure-destroy)
+        echo "💥 Deleting all Azure VMs..."
+        tools/create_vms_azure.sh --clean
+        echo "✅ All Azure VMs deleted"
+        ;;
+    azure-cleanup)
+        echo "🧹 Comprehensive Azure cleanup (removes ALL resources)..."
+        tools/cleanup_azure.sh
         ;;
     test)
         echo "🧪 Testing lab environment..."

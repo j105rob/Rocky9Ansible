@@ -71,6 +71,21 @@ aws configure
 ./setup.sh aws-cleanup
 ```
 
+**Azure Deployment:**
+```bash
+# Prerequisites: Configure Azure CLI
+az login
+
+# Deploy to Azure (single command)
+./setup.sh azure-create
+
+# Test the environment
+./setup.sh test
+
+# Cleanup when done (important to avoid charges!)
+./setup.sh azure-cleanup
+```
+
 ### Option 2: Using Tools Directly
 
 **Local KVM:**
@@ -95,6 +110,18 @@ aws configure
    tools/create_vms_aws.sh
    ```
 
+**Azure Deployment:**
+1. **Configure Azure CLI:**
+   ```bash
+   az login
+   ```
+
+2. **Create Azure VMs:**
+   ```bash
+   tools/create_vms_azure.sh
+   ```
+
+**Testing (works with all platforms):**
 3. **Test Ansible connectivity:**
    ```bash
    ansible all -i inventory.ini -m ping
@@ -111,9 +138,11 @@ aws configure
 - Generate Ansible inventory file
 - Test connectivity to ensure everything works
 
-## AWS Deployment
+## Cloud Deployment
 
-### Prerequisites for AWS
+### AWS Deployment
+
+#### Prerequisites for AWS
 
 1. **AWS CLI Installation:**
    ```bash
@@ -164,20 +193,70 @@ export KEY_NAME=my-ansible-key
 
 **💰 Important**: Always run `./setup.sh aws-cleanup` when done to avoid charges!
 
-### AWS vs Local KVM Comparison
+### Azure Deployment
 
-| Feature | Local KVM | AWS |
-|---------|-----------|-----|
-| **Cost** | Free (uses local resources) | ~$0.125/hour |
-| **Setup Time** | ~2 minutes | ~3-4 minutes |
-| **Internet Access** | Limited to local network | Full internet access |
-| **Scalability** | Limited by local hardware | Unlimited |
-| **Persistence** | Persistent until manually removed | Persistent until terminated |
-| **Accessibility** | Local network only | Accessible from anywhere |
+#### Prerequisites for Azure
+
+1. **Azure CLI Installation:**
+   ```bash
+   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+   ```
+
+2. **Azure Login:**
+   ```bash
+   az login
+   # Follow the browser authentication flow
+   ```
+
+3. **Required Permissions:**
+   Your Azure account needs the following permissions:
+   - Virtual Machine Contributor (or full access)
+   - Network Contributor (for VNet, NSG, Public IP management)
+   - Storage Account Contributor (for disk management)
+   - Key Vault Contributor (for SSH key management)
+
+#### Azure Configuration Options
+
+You can customize Azure deployment using environment variables or `config/lab.conf`:
+
+```bash
+# Set Azure region (default: eastus)
+export AZURE_LOCATION=westus2
+
+# Set VM size (default: Standard_B2s)
+export AZURE_VM_SIZE=Standard_B4ms
+
+# Set resource group name (default: ansible-lab-rg)
+export AZURE_RESOURCE_GROUP=my-ansible-lab
+
+# Then deploy
+./setup.sh azure-create
+```
+
+#### Azure Cost Considerations
+
+- **VM Size**: Default `Standard_B2s` costs ~$0.04/hour per VM
+- **Total Cost**: ~$0.12/hour for all 3 VMs
+- **Daily Cost**: ~$2.88/day if left running
+- **Monthly Cost**: ~$86/month if left running
+
+**💰 Important**: Always run `./setup.sh azure-cleanup` when done to avoid charges!
+
+### Cloud Platform Comparison
+
+| Feature | Local KVM | AWS | Azure |
+|---------|-----------|-----|-------|
+| **Cost** | Free (uses local resources) | ~$0.125/hour | ~$0.12/hour |
+| **Setup Time** | ~2 minutes | ~3-4 minutes | ~3-4 minutes |
+| **Internet Access** | Limited to local network | Full internet access | Full internet access |
+| **Scalability** | Limited by local hardware | Unlimited | Unlimited |
+| **Persistence** | Persistent until manually removed | Persistent until terminated | Persistent until terminated |
+| **Accessibility** | Local network only | Accessible from anywhere | Accessible from anywhere |
+| **OS Images** | Custom Rocky 9 build | Rocky 9 marketplace | RHEL 9 (Rocky compatible) |
 
 ## Testing Your Environment
 
-Once your lab is deployed (either KVM or AWS), you can test it with the included example playbook:
+Once your lab is deployed (KVM, AWS, or Azure), you can test it with the included example playbook:
 
 ```bash
 # Run the basic setup playbook
@@ -204,10 +283,13 @@ This playbook will:
 Rocky9Ansible/
 ├── setup.sh                       # Main setup wrapper script
 ├── tools/
+│   ├── common.sh                   # Shared functions and configuration loader
 │   ├── build_rocky9_image.sh       # Build cloud-init base image (KVM)
 │   ├── create_vms_cloudinit.sh     # Create VMs locally with KVM
 │   ├── create_vms_aws.sh           # Create EC2 instances in AWS
 │   ├── cleanup_aws.sh              # Comprehensive AWS resource cleanup
+│   ├── create_vms_azure.sh         # Create VMs in Azure
+│   ├── cleanup_azure.sh            # Comprehensive Azure resource cleanup
 │   ├── create_vms.sh               # Legacy ISO-based script
 │   └── test_lab.sh                 # Lab environment verification
 ├── config/
@@ -354,14 +436,16 @@ This project is licensed under the MIT License.
 
 ## Features
 
-- **Multi-Platform Deployment**: Choose between local KVM or AWS EC2 deployment
-- **Modern Cloud-Init Approach**: Fast VM deployment using official Rocky Linux cloud images
-- **AWS Integration**: Full AWS EC2 support with automatic VPC and security group creation
+- **Multi-Platform Deployment**: Choose between local KVM, AWS EC2, or Azure VMs
+- **Modern Cloud-Init Approach**: Fast VM deployment using official cloud images
+- **Full Cloud Integration**: Complete support for AWS EC2 and Azure VMs with automatic infrastructure creation
 - **Automated SSH Key Management**: Automatically generates SSH keys for passwordless authentication
 - **Passwordless Access**: Both SSH and sudo configured for seamless automation
 - **Ansible Ready**: Auto-generated inventory file with proper configuration
-- **Quick Deployment**: ~30 seconds for KVM, ~3-4 minutes for AWS
+- **Quick Deployment**: ~30 seconds for KVM, ~3-4 minutes for cloud platforms
 - **Connectivity Testing**: Automatic verification that SSH and sudo work correctly
-- **Easy Cleanup**: Simple cleanup commands to remove resources and avoid AWS charges
-- **Cost Awareness**: Clear cost information and automatic cleanup for AWS
+- **Easy Cleanup**: Simple cleanup commands to remove resources and avoid cloud charges
+- **Cost Awareness**: Clear cost information and automatic cleanup for cloud platforms
 - **Production-Like Environment**: Uses standard cloud deployment practices
+- **Shared Configuration**: Centralized configuration management with `config/lab.conf`
+- **Common Functions**: Shared utilities across all deployment methods

@@ -1,7 +1,7 @@
 # Rocky Linux 9 Ansible Lab Configuration
 # Copy this file to config/lab.conf and customize as needed
 
-# Deployment Type: 'kvm' or 'aws'
+# Deployment Type: 'kvm', 'aws', or 'azure'
 DEPLOYMENT_TYPE=kvm
 
 # KVM Configuration
@@ -12,8 +12,17 @@ KVM_DISK_SIZE=20
 
 # AWS Configuration
 AWS_REGION=us-east-1
-INSTANCE_TYPE=t3.medium
-KEY_NAME=ansible-lab-key
+AWS_INSTANCE_TYPE=t3.medium
+AWS_KEY_NAME=ansible-lab-key
+
+# Azure Configuration
+AZURE_LOCATION=eastus
+AZURE_VM_SIZE=Standard_B2s
+AZURE_RESOURCE_GROUP=ansible-lab-rg
+AZURE_VNET_NAME=ansible-lab-vnet
+AZURE_SUBNET_NAME=ansible-lab-subnet
+AZURE_NSG_NAME=ansible-lab-nsg
+AZURE_KEY_NAME=ansible-lab-key
 
 # Common Configuration
 DEFAULT_USER=rocky
@@ -23,4 +32,8 @@ SSH_KEY_PATH=/home/ubuntu/.ssh/id_rsa.pub
 # VM Names (modify if you want different names)
 VM_CONTROLLER=controller
 VM_WORKER1=worker1
-VM_WORKER2=worker2 
+VM_WORKER2=worker2
+
+# Network Configuration
+NETWORK_CIDR=10.0.0.0/16
+SUBNET_CIDR=10.0.1.0/24 
